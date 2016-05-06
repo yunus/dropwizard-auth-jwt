@@ -1,6 +1,7 @@
 package com.github.toastshaman.dropwizard.auth.jwt;
 
 import com.codahale.metrics.MetricRegistry;
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilderSpec;
 import io.dropwizard.auth.Authenticator;
@@ -16,7 +17,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.security.Principal;
-import java.util.Optional;
+
 
 import static com.google.common.base.Charsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;

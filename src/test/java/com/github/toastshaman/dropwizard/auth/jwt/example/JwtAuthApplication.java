@@ -1,6 +1,8 @@
 package com.github.toastshaman.dropwizard.auth.jwt.example;
 
 import com.github.toastshaman.dropwizard.auth.jwt.JwtAuthFilter;
+import com.google.common.base.Optional;
+
 import io.dropwizard.Application;
 import io.dropwizard.auth.AuthDynamicFeature;
 import io.dropwizard.auth.AuthValueFactoryProvider;
@@ -15,7 +17,7 @@ import org.jose4j.jwt.consumer.JwtContext;
 import org.jose4j.keys.HmacKey;
 
 import java.security.Principal;
-import java.util.Optional;
+
 
 import static java.math.BigDecimal.ONE;
 
@@ -73,9 +75,9 @@ public class JwtAuthApplication extends Application<MyConfiguration> {
                 if ("good-guy".equals(subject)) {
                     return Optional.of(new MyUser(ONE, "good-guy"));
                 }
-                return Optional.empty();
+                return Optional.absent();
             }
-            catch (MalformedClaimException e) { return Optional.empty(); }
+            catch (MalformedClaimException e) { return Optional.absent(); }
         }
     }
 

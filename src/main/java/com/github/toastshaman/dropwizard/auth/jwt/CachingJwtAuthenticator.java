@@ -3,6 +3,7 @@ package com.github.toastshaman.dropwizard.auth.jwt;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.google.common.base.Optional;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheBuilderSpec;
@@ -13,7 +14,6 @@ import org.jose4j.jwt.consumer.JwtContext;
 
 import java.security.Principal;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import static com.codahale.metrics.MetricRegistry.name;

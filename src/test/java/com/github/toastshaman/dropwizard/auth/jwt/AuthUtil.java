@@ -7,9 +7,11 @@ import io.dropwizard.auth.PrincipalImpl;
 import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.JwtContext;
 
+import com.google.common.base.Optional;
+
 import java.security.Principal;
 import java.util.List;
-import java.util.Optional;
+
 
 public class AuthUtil {
 
@@ -26,9 +28,9 @@ public class AuthUtil {
                     throw new AuthenticationException("CRAP");
                 }
 
-                return Optional.empty();
+                return Optional.absent();
             } catch (MalformedClaimException e) {
-                return Optional.empty();
+                return Optional.absent();
             }
         };
     }

@@ -1,13 +1,11 @@
 package com.github.toastshaman.dropwizard.auth.jwt;
 
-import io.dropwizard.auth.AuthFilter;
-import io.dropwizard.auth.AuthenticationException;
-import io.dropwizard.auth.Authenticator;
-import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
+
+import java.io.IOException;
+import java.security.Principal;
+import java.util.Map;
 
 import javax.annotation.Priority;
 import javax.ws.rs.InternalServerErrorException;
@@ -17,13 +15,19 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.SecurityContext;
-import java.io.IOException;
-import java.security.Principal;
-import java.util.Map;
-import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
+import org.jose4j.jwt.consumer.InvalidJwtException;
+import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.jwt.consumer.JwtContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Optional;
+import com.google.common.base.Strings;
+
+import io.dropwizard.auth.AuthFilter;
+import io.dropwizard.auth.AuthenticationException;
+import io.dropwizard.auth.Authenticator;
 
 @Priority(Priorities.AUTHENTICATION)
 public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P> {
@@ -31,11 +35,13 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthFilter.class);
 
     private final JwtConsumer consumer;
-    private final String cookieName;
+    private final String cookieName; 
+    private final String customHeader;
 
-    private JwtAuthFilter(JwtConsumer consumer, String cookieName) {
+    private JwtAuthFilter(JwtConsumer consumer, String cookieName, String header) {
         this.consumer = consumer;
         this.cookieName = cookieName;
+        this.customHeader = header;
     }
 
     @Override
@@ -89,16 +95,31 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
     }
 
     private Optional<String> getTokenFromCookieOrHeader(ContainerRequestContext requestContext) {
+    	
+    	final Optional<String> customHeaderToken = getTokenFromCustomHeader(requestContext.getHeaders());
+      
+        if (customHeaderToken.isPresent()) {
+            return customHeaderToken;
+        }
+        
         final Optional<String> headerToken = getTokenFromHeader(requestContext.getHeaders());
-
         if (headerToken.isPresent()) {
             return headerToken;
         }
 
         final Optional<String> cookieToken = getTokenFromCookie(requestContext);
-        return cookieToken.isPresent() ? cookieToken : Optional.empty();
+        return cookieToken.isPresent() ? cookieToken : Optional.absent();
     }
 
+    private Optional<String> getTokenFromCustomHeader(MultivaluedMap<String, String> headers) {
+        final String header = headers.getFirst(customHeader);
+        if (!Strings.isNullOrEmpty(header)) {
+        	return  Optional.of(header);
+        }
+
+        return Optional.absent();
+    } 
+    
     private Optional<String> getTokenFromHeader(MultivaluedMap<String, String> headers) {
         final String header = headers.getFirst(AUTHORIZATION);
         if (header != null) {
@@ -112,7 +133,7 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
             }
         }
 
-        return Optional.empty();
+        return Optional.absent();
     }
 
     private Optional<String> getTokenFromCookie(ContainerRequestContext requestContext) {
@@ -124,7 +145,7 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
             return Optional.of(rawToken);
         }
 
-        return Optional.empty();
+        return Optional.absent();
     }
 
     /**
@@ -137,6 +158,7 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
 
         private JwtConsumer consumer;
         private String cookieName;
+        private String header;
 
         public Builder<P> setJwtConsumer(JwtConsumer consumer) {
             this.consumer = consumer;
@@ -147,11 +169,16 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
             this.cookieName = cookieName;
             return this;
         }
+        
+        public Builder<P> setAuthorizationHeader(String header){
+        	this.header = header;
+        	return this;
+        }
 
         @Override
         protected JwtAuthFilter<P> newInstance() {
             checkNotNull(consumer, "JwtConsumer is not set");
-            return new JwtAuthFilter<>(consumer, cookieName);
+            return new JwtAuthFilter<>(consumer, cookieName, header);
         }
     }
 }
