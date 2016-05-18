@@ -5,40 +5,42 @@ import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.text.ParseException;
 import java.util.Map;
 
 import javax.annotation.Priority;
-import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.Priorities;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.proc.BadJOSEException;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 
 import io.dropwizard.auth.AuthFilter;
 import io.dropwizard.auth.AuthenticationException;
 import io.dropwizard.auth.Authenticator;
 
 @Priority(Priorities.AUTHENTICATION)
-public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P> {
+public class JwtAuthFilter<P extends Principal> extends AuthFilter<JWTClaimsSet, P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    private final JwtConsumer consumer;
+    private final ConfigurableJWTProcessor  consumer;
     private final String cookieName; 
     private final String customHeader;
 
-    private JwtAuthFilter(JwtConsumer consumer, String cookieName, String header) {
+    private JwtAuthFilter(ConfigurableJWTProcessor consumer, String cookieName, String header) {
         this.consumer = consumer;
         this.cookieName = cookieName;
         this.customHeader = header;
@@ -50,8 +52,8 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
 
         if (optionalToken.isPresent()) {
             try {
-                final JwtContext jwtContext = verifyToken(optionalToken.get());
-                final Optional<P> principal = authenticator.authenticate(jwtContext);
+                final JWTClaimsSet jwtClaimsSet = verifyToken(optionalToken.get());
+                final Optional<P> principal = authenticator.authenticate(jwtClaimsSet);
 
                 if (principal.isPresent()) {
                     requestContext.setSecurityContext(new SecurityContext() {
@@ -79,19 +81,26 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
                     });
                     return;
                 }
-            } catch (InvalidJwtException ex) {
-                LOGGER.warn("Error decoding credentials: " + ex.getMessage(), ex);
-            } catch (AuthenticationException ex) {
-                LOGGER.warn("Error authenticating credentials", ex);
-                throw new InternalServerErrorException();
-            }
+            }  catch (AuthenticationException e) {
+                LOGGER.warn("Error authenticating credentials", e);
+                throw new WebApplicationException(e.getMessage(), Response.Status.UNAUTHORIZED);
+            } catch (ParseException e) {
+				LOGGER.warn("Error in parsing JWT. ",e);				
+				 throw new WebApplicationException(e.getMessage(), Response.Status.UNAUTHORIZED);
+			} catch (BadJOSEException e) {
+				LOGGER.warn("Bad JOSE. ",e);				
+				 throw new WebApplicationException(e.getMessage(), Response.Status.UNAUTHORIZED);
+			} catch (JOSEException e) {
+				LOGGER.warn("JOSE exception. ",e);				
+				 throw new WebApplicationException(e.getMessage(), Response.Status.UNAUTHORIZED);
+			}
         }
 
         throw new WebApplicationException(unauthorizedHandler.buildResponse(prefix, realm));
     }
 
-    private JwtContext verifyToken(String rawToken) throws InvalidJwtException {
-        return consumer.process(rawToken);
+    private JWTClaimsSet verifyToken(String rawToken) throws ParseException, BadJOSEException, JOSEException  {
+        return consumer.process(rawToken,null);
     }
 
     private Optional<String> getTokenFromCookieOrHeader(ContainerRequestContext requestContext) {
@@ -154,13 +163,13 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
      *
      * @param <P> the principal
      */
-    public static class Builder<P extends Principal> extends AuthFilterBuilder<JwtContext, P, JwtAuthFilter<P>> {
+    public static class Builder<P extends Principal> extends AuthFilterBuilder<JWTClaimsSet, P, JwtAuthFilter<P>> {
 
-        private JwtConsumer consumer;
+        private ConfigurableJWTProcessor consumer;
         private String cookieName;
         private String header;
 
-        public Builder<P> setJwtConsumer(JwtConsumer consumer) {
+        public Builder<P> setJwtConsumer(ConfigurableJWTProcessor consumer) {
             this.consumer = consumer;
             return this;
         }
@@ -177,7 +186,7 @@ public class JwtAuthFilter<P extends Principal> extends AuthFilter<JwtContext, P
 
         @Override
         protected JwtAuthFilter<P> newInstance() {
-            checkNotNull(consumer, "JwtConsumer is not set");
+            checkNotNull(consumer, "ConfigurableJWTProcessor is not set");
             return new JwtAuthFilter<>(consumer, cookieName, header);
         }
     }

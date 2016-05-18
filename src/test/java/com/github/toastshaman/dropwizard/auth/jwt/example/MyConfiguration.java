@@ -8,9 +8,14 @@ import java.io.UnsupportedEncodingException;
 public class MyConfiguration extends Configuration {
 
     @NotEmpty
-    private String jwtTokenSecret = "dfwzsdzwh823zebdwdz772632gdsbd";
+    private String jwtTokenCertsfile = "listofcerts.jks";
 
-    public byte[] getJwtTokenSecret() throws UnsupportedEncodingException {
-        return jwtTokenSecret.getBytes("UTF-8");
-    }
+	public String getJwtTokenCertsfile() {
+		return jwtTokenCertsfile;
+	}
+
+	public void setJwtTokenCertsfile(String jwtTokenCertsfile) {
+		this.jwtTokenCertsfile = jwtTokenCertsfile;
+	}
+
 }

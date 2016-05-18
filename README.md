@@ -14,6 +14,7 @@ Check out http://jwt.io/
 ## What is available in this forked version?
 To be able to support WSO2, I have added custom header selection, in particular x-jwt-assertion.
 Also I had to downgrade to Dropwizard 0.9.2 due to java.util.Optional and Guava's optional implementation. 
+And I have changed the Jose library to com.nimbusds since WSO2 signature were not successfully validated by Jose4j. 
 
 ## What's new in the *upcoming* v1.0.0 release
 * Replaced the JWT token generation and verification with [jose4j](https://bitbucket.org/b_c/jose4j/wiki/Home). 
