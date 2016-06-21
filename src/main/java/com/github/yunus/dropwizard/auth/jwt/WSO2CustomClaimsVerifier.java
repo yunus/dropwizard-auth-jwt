@@ -30,18 +30,12 @@ public class WSO2CustomClaimsVerifier extends DefaultJWTClaimsVerifier {
 		DateTime expirationDate = new DateTime(claimsSet.getExpirationTime().getTime()/1000L).
 				plusSeconds(DefaultJWTClaimsVerifier.DEFAULT_MAX_CLOCK_SKEW_SECONDS);
 
-		//if(expirationDate.isBeforeNow()){
-			//throw new BadJWTException("JWT has already expired.");
-		//}
-		System.out.println("Claims = "+claimsSet.getClaims());
-		//algorithm field should not be empty
-		try {
-			if(Strings.isNullOrEmpty(claimsSet.getStringClaim("alg")) || claimsSet.getStringClaim("alg").equalsIgnoreCase("RS256")){
-				throw new BadJWTException("Algorithm cannot be empty and only RS256 is accepted.");
-			}
-		} catch (ParseException e) {
-			throw new BadJWTException("Could not parse the algoruthm field.");
+		if(expirationDate.isBeforeNow()){
+			throw new BadJWTException("JWT has already expired.");
 		}
+	//	System.out.println("Claims = "+claimsSet.getClaims());
+	
+	
 		
 		
 		// Issuer is WSO2
